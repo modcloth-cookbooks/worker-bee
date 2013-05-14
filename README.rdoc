@@ -1,0 +1,27 @@
+Description
+===========
+
+Installs a host of tools and scripts that would prove to be useful to the average Operations Engineer or Systems Administrator.
+
+Requirements
+============
+
+Platform
+--------
+
+* SmartOS... for now.
+
+Attributes
+==========
+
+Recipes
+=======
+
+default
+-------
+
+Usage
+=====
+
+License and Author
+==================

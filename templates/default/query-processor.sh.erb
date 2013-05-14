@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Define path to binaries used by this script
+PATH="/mysql/bin:/mysql/libexec:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin"
+
+# Exit if a lock file exists
+if [ -f /tmp/query-processor_lock ]; then
+  exit 1
+fi
+
+# Define working directory
+WORKING_DIR="/tmp"
+
+# Change to working directory
+cd ${WORKING_DIR}
+
+# Define where the captured the queries live, which host to process them for, and what types of queries we should examine, who the report will be sent to, and sent from
+PROCESSOR_DIR="<%= node[:worker_bee][:query_processor][:processor_dir] %>"
+PROCESS_FOR_HOSTNAME="<%= node[:worker_bee][:query_processor][:process_for] %>"
+TO="<%= node[:worker_bee][:query_processor][:to_address] %>"
+FROM="<%= node[:worker_bee][:query_processor][:from_address] %>"
+
+# Define the newest set of captured queries
+NEWEST=`cat ${PROCESSOR_DIR}/${PROCESS_FOR_HOSTNAME}/LATEST_LOG`
+
+# Create a blank file that marks the last time we processed a captured set of queries... if one doesn't exist
+if [ ! -f ${PROCESSOR_DIR}/${PROCESS_FOR_HOSTNAME}/LAST_PROCESS ]; then
+  touch ${PROCESSOR_DIR}/${PROCESS_FOR_HOSTNAME}/LAST_PROCESS
+fi
+
+# Define when the last time we processed a set of captured queries
+LAST=`cat ${PROCESSOR_DIR}/${PROCESS_FOR_HOSTNAME}/LAST_PROCESS`
+
+# Exit quietly if there are no new captured queries
+if [ "${NEWEST}" = "${LAST}" ]; then
+  exit 0
+else
+  # Touch the lock file
+  touch /tmp/query-processor_lock
+
+  # PROCESS!!!
+  pt-query-digest ${PROCESSOR_DIR}/${PROCESS_FOR_HOSTNAME}/queries-${NEWEST}.log > digested-queries-${PROCESS_FOR_HOSTNAME}-${NEWEST}.log
+
+  # Mail the processed queries
+  /opt/scripts/attachment-mailer.sh digested-queries-${PROCESS_FOR_HOSTNAME}-${NEWEST}.log ${TO} ${FROM}
+
+  # Clean up after ourselves
+  rm digested-queries-${PROCESS_FOR_HOSTNAME}-${NEWEST}.log
+
+  # Compress the captured queries
+  gzip -c ${PROCESSOR_DIR}/${PROCESS_FOR_HOSTNAME}/queries-${NEWEST}.log > ${PROCESSOR_DIR}/${PROCESS_FOR_HOSTNAME}/queries-${NEWEST}.log.gz
+
+  # Remove the uncompressed captured queries
+  rm ${PROCESSOR_DIR}/${PROCESS_FOR_HOSTNAME}/queries-${NEWEST}.log
+
+  # Record the time that we processed the log
+  echo ${NEWEST} > ${PROCESSOR_DIR}/${PROCESS_FOR_HOSTNAME}/LAST_PROCESS
+
+  # Remove old log files
+  find ${PROCESSOR_DIR}/${PROCESS_FOR_HOSTNAME}/ -mtime +7 -exec rm -rf {} \;
+
+  # Remove the lock file
+  rm /tmp/query-processor_lock
+fi
+

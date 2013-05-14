@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Define path to binaries used by this script
+PATH="/mysql/bin:/mysql/libexec:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin"
+
+# Make a note of the original settings
+ORIGINAL_CAPTURE_FILE=`echo "show global variables like 'slow_query_log_file';" | mysql | tail -1 | awk '{print $2}'`
+ORIGINAL_CAPTURE_STATE=`echo "show global variables like 'log_slow_queries';" | mysql | tail -1 | awk '{print $2}'`
+ORIGINAL_LONG_QUERY_TIME=`echo "show global variables like 'long_query_time';" | mysql | tail -1 | awk '{print $2}'`
+
+# Define where to capture the queries, for how long, and where the processor will need them to be
+CAPTURE_DIR="<%= node[:worker_bee][:query_capture][:capture_dir] %>"
+CAPTURE_TIME="<%= node[:worker_bee][:query_capture][:capture_time] %>"
+PROCESSOR_DIR="<%= node[:worker_bee][:query_processor][:processor_dir] %>"
+
+# Define the time and date that this script ran
+DATE=`date +%Y%m%d%H%M`
+
+# Define the hostname
+HOSTNAME=`hostname`
+
+# Setup Percona to log all queries
+echo "set global log_slow_queries='OFF';" | mysql
+echo "set global slow_query_log_file='${CAPTURE_DIR}/queries.log';" | mysql
+echo "set global long_query_time=0;" | mysql
+
+# CAPTURE!!!
+echo "set global log_slow_queries='ON';" | mysql
+sleep ${CAPTURE_TIME}
+
+# Deactivate
+echo "set global log_slow_queries='OFF';" | mysql
+
+# Reset Percona to original state
+echo "set global slow_query_log_file='${ORIGINAL_CAPTURE_FILE}';" | mysql
+echo "set global long_query_time=${ORIGINAL_LONG_QUERY_TIME};" | mysql
+echo "set global log_slow_queries=${ORIGINAL_CAPTURE_STATE};" | mysql
+
+# Create the processor dir if it doesn't already exist
+if [ ! -d ${PROCESSOR_DIR}/${HOSTNAME} ]; then
+  mkdir -p ${PROCESSOR_DIR}/${HOSTNAME}
+fi
+
+# Put the captured log files in a spot where the processor can grab it
+mv ${CAPTURE_DIR}/queries.log ${PROCESSOR_DIR}/${HOSTNAME}/queries-${DATE}.log
+
+# Update the status file for the processor
+echo "${DATE}" > ${PROCESSOR_DIR}/${HOSTNAME}/LATEST_LOG
+
