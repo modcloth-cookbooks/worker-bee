@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Define path to binaries used by this script
+PATH="/mysql/bin:/mysql/libexec:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin"
+
+# Define the time and date that this script ran
+DATE=`date +%Y%m%d%H%M`
+
+# Define the hostname
+HOSTNAME=`hostname`
+
+# Define where to capture the queries, for how long, and where the processor will need them to be
+CAPTURE_DIR="<%= node[:worker_bee][:query_capture][:capture_dir] %>"
+PROCESSOR_DIR="<%= node[:worker_bee][:query_processor][:processor_dir] %>"
+
+# Create the processor dir if it doesn't already exist
+if [ ! -d ${PROCESSOR_DIR}/${HOSTNAME} ]; then
+  mkdir -p ${PROCESSOR_DIR}/${HOSTNAME}
+fi
+
+# Turn of the query capture
+echo "set global log_slow_queries='OFF';" | mysql
+
+# Put the captured log files in a spot where the processor can grab it
+mv ${CAPTURE_DIR}/slow-queries.log ${PROCESSOR_DIR}/${HOSTNAME}/queries-${DATE}.log
+
+# Turn the query capture back on
+echo "set global log_slow_queries='ON';" | mysql
+
+# Update the status file for the processor
+echo "${DATE}" > ${PROCESSOR_DIR}/${HOSTNAME}/LATEST_LOG
+
