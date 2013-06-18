@@ -21,20 +21,20 @@ HOSTNAME=`hostname`
 
 # Setup Percona to log all queries
 echo "set global log_slow_queries='OFF';" | mysql
-echo "set global slow_query_log_file='${CAPTURE_DIR}/queries.log';" | mysql
-echo "set global long_query_time=0;" | mysql
 
 # CAPTURE!!!
 echo "set global log_slow_queries='ON';" | mysql
+echo "set global slow_query_log_file='${CAPTURE_DIR}/queries.log';" | mysql
+echo "set global long_query_time=0;" | mysql
 sleep ${CAPTURE_TIME}
 
 # Deactivate
 echo "set global log_slow_queries='OFF';" | mysql
 
 # Reset Percona to original state
+echo "set global log_slow_queries=${ORIGINAL_CAPTURE_STATE};" | mysql
 echo "set global slow_query_log_file='${ORIGINAL_CAPTURE_FILE}';" | mysql
 echo "set global long_query_time=${ORIGINAL_LONG_QUERY_TIME};" | mysql
-echo "set global log_slow_queries=${ORIGINAL_CAPTURE_STATE};" | mysql
 
 # Create the processor dir if it doesn't already exist
 if [ ! -d ${PROCESSOR_DIR}/${HOSTNAME} ]; then
