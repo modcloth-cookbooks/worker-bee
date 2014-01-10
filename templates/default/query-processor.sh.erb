@@ -37,7 +37,7 @@ do
 
 	# Exit quietly if there are no new captured queries
 	if [ "${NEWEST}" = "${LAST}" ]; then
-  		exit 0
+  		continue
 	else
   		# Touch the lock file
   		touch /tmp/query-processor_lock
