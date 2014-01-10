@@ -10,7 +10,7 @@ DATE=`date +%Y%m%d%H%M`
 HOSTNAME=`hostname`
 
 # Define where to capture the queries, for how long, and where the processor will need them to be
-CAPTURE_DIR="/var/log/mysql"
+CAPTURE_DIR="<%= node[:worker_bee][:query_capture][:capture_dir] %>"
 PROCESSOR_DIR="<%= node[:worker_bee][:query_processor][:processor_dir] %>"
 
 # Create the processor dir if it doesn't already exist
